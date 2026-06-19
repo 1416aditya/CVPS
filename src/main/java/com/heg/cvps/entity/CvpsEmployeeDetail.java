@@ -1,64 +1,3 @@
-// package com.heg.cvps.entity;
-
-// import java.io.Serializable;
-
-// import jakarta.persistence.Column;
-// import jakarta.persistence.Entity;
-// import jakarta.persistence.FetchType;
-// import jakarta.persistence.GeneratedValue;
-// import jakarta.persistence.GenerationType;
-// import jakarta.persistence.Id;
-// import jakarta.persistence.JoinColumn;
-// import jakarta.persistence.ManyToOne;
-// import jakarta.persistence.SequenceGenerator;
-// import jakarta.persistence.Table;
-
-// @Entity
-// @Table(name = "CVPS_EMPLOYEE_DETAIL")
-// public class CvpsEmployeeDetail implements Serializable {
-//     private static final long serialVersionUID = 1L;
-
-//     @Id
-//     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "emp_det_seq")
-//     @SequenceGenerator(name = "emp_det_seq", sequenceName = "SEQ_CVPS_EMPLOYEE_DETAIL", allocationSize = 1)
-//     private Long id;
-
-//     @ManyToOne(fetch = FetchType.LAZY)
-//     @JoinColumn(name = "REQ_ID", nullable = false)
-//     private CvpsRequest request;
-
-//     @Column(name = "EMP_JOB", nullable = false)
-//     private String empJob;
-
-//     @Column(name = "EMP_TYPE", nullable = false)
-//     private String empType;
-
-//     @Column(name = "EMP_NO")
-//     private Long empNo;
-
-//     @Column(name = "AADHAR_NO")
-//     private String aadharNo;
-
-//     @Column(name = "NAME")
-//     private String name;
-
-//     public CvpsEmployeeDetail() {}
-
-//     public Long getId() { return id; }
-//     public void setId(Long id) { this.id = id; }
-//     public CvpsRequest getRequest() { return request; }
-//     public void setRequest(CvpsRequest request) { this.request = request; }
-//     public String getEmpJob() { return empJob; }
-//     public void setEmpJob(String empJob) { this.empJob = empJob; }
-//     public String getEmpType() { return empType; }
-//     public void setEmpType(String empType) { this.empType = empType; }
-//     public Long getEmpNo() { return empNo; }
-//     public void setEmpNo(Long empNo) { this.empNo = empNo; }
-//     public String getAadharNo() { return aadharNo; }
-//     public void setAadharNo(String aadharNo) { this.aadharNo = aadharNo; }
-//     public String getName() { return name; }
-//     public void setName(String name) { this.name = name; }
-// }
 
 
 
@@ -66,11 +5,9 @@
 package com.heg.cvps.entity;
 
 import java.io.Serializable;
-import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import jakarta.persistence.CascadeType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -79,7 +16,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -96,7 +32,6 @@ public class CvpsEmployeeDetail implements Serializable {
     @SequenceGenerator(name = "emp_det_seq", sequenceName = "SEQ_CVPS_EMPLOYEE_DETAIL", allocationSize = 1)
     private Long id;
 
-    // 🔄 Upward Link to Parent Request with Jackson Loop protection
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "REQ_ID", nullable = false)
     @JsonBackReference
@@ -117,14 +52,8 @@ public class CvpsEmployeeDetail implements Serializable {
     @Column(name = "NAME")
     private String name;
 
-    // 🔄 Downward Link: 1:M connection to Employee Documents (Phase 6)
-    @OneToMany(mappedBy = "employeeDetail", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JsonManagedReference
-    private List<CvpsEmployeeDocument> employeeDocuments;
-
     public CvpsEmployeeDetail() {}
 
-    // Standard Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
@@ -145,8 +74,4 @@ public class CvpsEmployeeDetail implements Serializable {
     
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-
-    // Relationship Getter and Setter
-    public List<CvpsEmployeeDocument> getEmployeeDocuments() { return employeeDocuments; }
-    public void setEmployeeDocuments(List<CvpsEmployeeDocument> employeeDocuments) { this.employeeDocuments = employeeDocuments; }
 }

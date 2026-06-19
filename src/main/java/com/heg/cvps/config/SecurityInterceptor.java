@@ -1,49 +1,6 @@
 
 
 
-
-
-// package com.heg.cvps.config;
-
-// import org.springframework.http.HttpStatus;
-// import org.springframework.stereotype.Component;
-// import org.springframework.web.servlet.HandlerInterceptor;
-
-// import jakarta.servlet.http.HttpServletRequest;
-// import jakarta.servlet.http.HttpServletResponse;
-// import jakarta.servlet.http.HttpSession;
-
-// @Component
-// public class SecurityInterceptor implements HandlerInterceptor {
-
-//     private static final String ASSIGNED_API_KEY = "HEG-CVPS-KEY-TOKEN-2026";
-
-//     @Override
-//     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-//         // 1. Check for standard X-API-KEY Header (Used by Postman)
-//         String providedHeaderKey = request.getHeader("X-API-KEY");
-//         if (providedHeaderKey != null && providedHeaderKey.equals(ASSIGNED_API_KEY)) {
-//             // Flag session as authenticated for browser downloads
-//             request.getSession(true).setAttribute("authenticated", true);
-//             return true;
-//         }
-
-//         // 2. Check for active Browser Session Cookie (Used by Chrome)
-//         HttpSession session = request.getSession(false);
-//         if (session != null && Boolean.TRUE.equals(session.getAttribute("authenticated"))) {
-//             return true;
-//         }
-
-//         response.setStatus(HttpStatus.UNAUTHORIZED.value());
-//         response.setContentType("application/json");
-//         response.getWriter().write("{\"error\": \"Unauthorized Request\", \"message\": \"Access Denied. Authenticate via Postman first.\"}");
-//         return false; 
-//     }
-// }
-
-
-
-
 package com.heg.cvps.config;
 
 import java.nio.charset.StandardCharsets;

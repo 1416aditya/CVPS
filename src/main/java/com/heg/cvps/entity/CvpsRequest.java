@@ -1,13 +1,21 @@
+
+
 // package com.heg.cvps.entity;
 
 // import java.io.Serializable;
 // import java.time.LocalDateTime;
+// import java.util.List;
 
+// import com.fasterxml.jackson.annotation.JsonManagedReference;
+
+// import jakarta.persistence.CascadeType;
 // import jakarta.persistence.Column;
 // import jakarta.persistence.Entity;
+// import jakarta.persistence.FetchType;
 // import jakarta.persistence.GeneratedValue;
 // import jakarta.persistence.GenerationType;
 // import jakarta.persistence.Id;
+// import jakarta.persistence.OneToMany;
 // import jakarta.persistence.SequenceGenerator;
 // import jakarta.persistence.Table;
 // import jakarta.persistence.UniqueConstraint;
@@ -22,62 +30,66 @@
 
 //     private static final long serialVersionUID = 1L;
 
-//     // System-generated unique Request Number (Primary Key) via your PDF Sequence
 //     @Id
 //     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "cvps_req_seq")
 //     @SequenceGenerator(name = "cvps_req_seq", sequenceName = "SEQ_CVPS_REQUEST_NO", allocationSize = 1)
 //     @Column(name = "REQUEST_NO")
 //     private Long requestNo;
 
-//     // Contractor employee/vendor code submitting the request
 //     @NotNull
 //     @Column(name = "CONTRACTOR_ID", columnDefinition = "CHAR(9)", nullable = false)
 //     private String contractorId;
 
-//     // Purpose of vehicle entry (Material Delivery, Maintenance, etc.)
 //     @NotNull
 //     @Size(max = 150)
 //     @Column(name = "NATURE_OF_JOB", nullable = false)
 //     private String natureOfJob;
 
-//     // Vehicle registration number
 //     @NotNull
 //     @Size(max = 20)
 //     @Column(name = "VEHICLE_NO", nullable = false)
 //     private String vehicleNo;
 
-//     // Category values: TRUCK, CRANE, TRAILER, PICKUP, FORKLIFT
 //     @NotNull
 //     @Size(max = 10)
 //     @Column(name = "VEHICLE_TYPE", nullable = false)
 //     private String vehicleType;
 
-//     // Start date and time of vehicle entry permission
 //     @NotNull
 //     @Column(name = "PERMISSION_FROM", nullable = false)
 //     private LocalDateTime permissionFrom;
 
-//     // End date and time of vehicle entry permission
 //     @NotNull
 //     @Column(name = "PERMISSION_TO", nullable = false)
 //     private LocalDateTime permissionTo;
 
-//     // Current request status. Default value is 'CREATED'
 //     @NotNull
 //     @Size(max = 20)
 //     @Column(name = "REQ_STATUS", nullable = false)
 //     private String reqStatus = "CREATED";
 
-//     // Employee/Contractor ID who created the request
 //     @NotNull
 //     @Column(name = "CREATED_BY", columnDefinition = "CHAR(9)", nullable = false)
 //     private String createdBy;
 
-//     // Date and time when the request was created (Defaults to SYSDATE in DB)
 //     @Column(name = "CREATED_DATE", insertable = false, updatable = false)
 //     private LocalDateTime createdDate;
 
-//     // Default No-Arg Constructor required by JPA
+//     // 🔄 1. Relationship to Vehicle Documents (Phase 4)
+//     @OneToMany(mappedBy = "request", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+//     @JsonManagedReference
+//     private List<CvpsVehicleDocument> vehicleDocuments;
+
+//     // 🔄 2. Relationship to Workflow Audit History Trail (Phase 8) - Fixed Naming Mismatch
+//     @OneToMany(mappedBy = "request", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+//     @JsonManagedReference
+//     private List<CvpsRequestHistory> requestHistories;
+
+//     // 🔄 3. Relationship to Drivers and Associated Personnel (Phase 5)
+//     @OneToMany(mappedBy = "request", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+//     @JsonManagedReference
+//     private List<CvpsEmployeeDetail> employeeDetails;
+
 //     public CvpsRequest() {}
 
 //     // Clear, Standard Getters and Setters
@@ -110,7 +122,18 @@
 
 //     public LocalDateTime getCreatedDate() { return createdDate; }
 //     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+
+//     // Relationship Getters and Setters
+//     public List<CvpsVehicleDocument> getVehicleDocuments() { return vehicleDocuments; }
+//     public void setVehicleDocuments(List<CvpsVehicleDocument> vehicleDocuments) { this.vehicleDocuments = vehicleDocuments; }
+
+//     public List<CvpsRequestHistory> getRequestHistories() { return requestHistories; }
+//     public void setRequestHistories(List<CvpsRequestHistory> requestHistories) { this.requestHistories = requestHistories; }
+
+//     public List<CvpsEmployeeDetail> getEmployeeDetails() { return employeeDetails; }
+//     public void setEmployeeDetails(List<CvpsEmployeeDetail> employeeDetails) { this.employeeDetails = employeeDetails; }
 // }
+
 
 
 package com.heg.cvps.entity;
@@ -132,6 +155,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -149,39 +173,41 @@ public class CvpsRequest implements Serializable {
     @Column(name = "REQUEST_NO")
     private Long requestNo;
 
-    @NotNull
+    @NotBlank(message = "Contractor ID is mandatory and cannot be blank.")
+    @Size(min = 1, max = 9, message = "Contractor ID must not exceed 9 characters.")
     @Column(name = "CONTRACTOR_ID", columnDefinition = "CHAR(9)", nullable = false)
     private String contractorId;
 
-    @NotNull
-    @Size(max = 150)
+    @NotBlank(message = "Nature of job description is mandatory.")
+    @Size(max = 150, message = "Nature of job description must not exceed 150 characters.")
     @Column(name = "NATURE_OF_JOB", nullable = false)
     private String natureOfJob;
 
-    @NotNull
-    @Size(max = 20)
+    @NotBlank(message = "Vehicle registration number is mandatory.")
+    @Size(min = 4, max = 20, message = "Vehicle number must be between 4 and 20 alphanumeric characters.")
     @Column(name = "VEHICLE_NO", nullable = false)
     private String vehicleNo;
 
-    @NotNull
-    @Size(max = 10)
+    @NotBlank(message = "Vehicle type is mandatory (e.g., TRUCK, DUMPER).")
+    @Size(max = 10, message = "Vehicle type must not exceed 10 characters.")
     @Column(name = "VEHICLE_TYPE", nullable = false)
     private String vehicleType;
 
-    @NotNull
+    @NotNull(message = "Permission start date and time is mandatory.")
     @Column(name = "PERMISSION_FROM", nullable = false)
     private LocalDateTime permissionFrom;
 
-    @NotNull
+    @NotNull(message = "Permission expiry date and time is mandatory.")
     @Column(name = "PERMISSION_TO", nullable = false)
     private LocalDateTime permissionTo;
 
-    @NotNull
-    @Size(max = 20)
+    @NotBlank(message = "Request status cannot be blank.")
+    @Size(max = 20, message = "Status length must not exceed 20 characters.")
     @Column(name = "REQ_STATUS", nullable = false)
     private String reqStatus = "CREATED";
 
-    @NotNull
+    @NotBlank(message = "Creator Employee ID (Created By) is mandatory.")
+    @Size(max = 9, message = "Creator ID must not exceed 9 characters.")
     @Column(name = "CREATED_BY", columnDefinition = "CHAR(9)", nullable = false)
     private String createdBy;
 
@@ -193,7 +219,7 @@ public class CvpsRequest implements Serializable {
     @JsonManagedReference
     private List<CvpsVehicleDocument> vehicleDocuments;
 
-    // 🔄 2. Relationship to Workflow Audit History Trail (Phase 8) - Fixed Naming Mismatch
+    // 🔄 2. Relationship to Workflow Audit History Trail (Phase 8)
     @OneToMany(mappedBy = "request", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JsonManagedReference
     private List<CvpsRequestHistory> requestHistories;
