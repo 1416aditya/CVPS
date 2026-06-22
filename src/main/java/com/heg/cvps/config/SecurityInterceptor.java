@@ -5,10 +5,14 @@ package com.heg.cvps.config;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+
+import com.heg.cvps.entity.CvpsUser;
+import com.heg.cvps.repository.CvpsUserRepository;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,9 +22,12 @@ public class SecurityInterceptor implements HandlerInterceptor {
 
     private static final String ASSIGNED_API_KEY = "HEG-CVPS-KEY-TOKEN-2026";
     
-    // Define a secure username and password your team can use inside Chrome
-    private static final String BROWSER_USER = "heg_admin";
-    private static final String BROWSER_PASS = "baann_2026";
+    private final CvpsUserRepository userRepository;
+
+    // Inject the User Repository to allow dynamic Oracle DB record lookups
+    public SecurityInterceptor(CvpsUserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -38,22 +45,30 @@ public class SecurityInterceptor implements HandlerInterceptor {
                 String base64Credentials = authHeader.substring("Basic ".length()).trim();
                 byte[] credDecoded = Base64.getDecoder().decode(base64Credentials);
                 String credentials = new String(credDecoded, StandardCharsets.UTF_8);
-                // credentials format is "username:password"
+                
+                // credentials format is "username:password" (Username expected to be the numeric EMPNO)
                 String[] values = credentials.split(":", 2);
                 
-                if (values.length == 2 && BROWSER_USER.equals(values[0]) && BROWSER_PASS.equals(values[1])) {
-                    return true; // Credentials match! Let Chrome download the file.
+                if (values.length >= 1) {
+                    Long parsedEmpNo = Long.parseLong(values[0].trim());
+                    
+                    // Dynamic Oracle Verification: Check if the user exists and is active ('Y')
+                    Optional<CvpsUser> activeUserOpt = userRepository.findByEmpNoAndActive(parsedEmpNo, "Y");
+                    
+                    if (activeUserOpt.isPresent()) {
+                        return true; // Dynamic match found! Grant access.
+                    }
                 }
             } catch (Exception e) {
-                // Invalid base64 encoding, fall through to trigger login box
+                // Fail silently and fall through to trigger authorization prompt block
             }
         }
 
-        // 3. If no valid credentials found, tell Chrome to open its native login popup box
-        response.setHeader("WWW-Authenticate", "Basic realm=\"CVPS Secure Document Download\"");
+        // 3. If no valid dynamic credentials match found, prompt the browser's native login popup box
+        response.setHeader("WWW-Authenticate", "Basic realm=\"CVPS Secure Database Document Access\"");
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType("application/json");
-        response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Please provide valid credentials to download this document.\"}");
+        response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"Access Denied. Please provide a valid, active Employee Number (EMPNO) to authenticate.\"}");
         return false;
     }
 }
