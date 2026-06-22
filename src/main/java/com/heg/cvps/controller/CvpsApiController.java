@@ -13,6 +13,7 @@
 // import org.springframework.http.HttpStatus;
 // import org.springframework.http.MediaType;
 // import org.springframework.http.ResponseEntity;
+// import org.springframework.web.bind.annotation.CrossOrigin;
 // import org.springframework.web.bind.annotation.GetMapping;
 // import org.springframework.web.bind.annotation.PathVariable;
 // import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +32,7 @@
 
 // import jakarta.validation.Valid;
 
+// @CrossOrigin(origins = "*", allowedHeaders = "*") // 🆕 UNBLOCKS YOUR FRONTEND TEAMMATE FROM CORS RESTRICTIONS
 // @RestController
 // @RequestMapping("/api/v1/permissions")
 // public class CvpsApiController {
@@ -124,7 +126,7 @@
 //     }
 
 //     // =========================================================================
-//     // 🆕 PHASE 9: SUMMARY REPORTING AND LOOKUP ENDPOINTS
+//     // PHASE 9: SUMMARY REPORTING AND LOOKUP ENDPOINTS
 //     // =========================================================================
     
 //     /**
@@ -197,6 +199,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -212,7 +215,7 @@ import com.heg.cvps.service.CvpsRequestService;
 
 import jakarta.validation.Valid;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*") // 🆕 UNBLOCKS YOUR FRONTEND TEAMMATE FROM CORS RESTRICTIONS
+@CrossOrigin(origins = "*", allowedHeaders = "*") // UNBLOCKS YOUR FRONTEND TEAMMATE FROM CORS RESTRICTIONS
 @RestController
 @RequestMapping("/api/v1/permissions")
 public class CvpsApiController {
@@ -289,7 +292,7 @@ public class CvpsApiController {
     }
 
     // =========================================================================
-    // REFACTORED PHASE 7 & 8: CLEAN WORKFLOW ACTION ENDPOINT WITH JSON BODY
+    // PHASE 7 & 8: WORKFLOW ACTION ENDPOINT WITH JSON BODY
     // =========================================================================
     @PostMapping("/{requestNo}/workflow-action")
     public ResponseEntity<CvpsRequest> performWorkflowAction(
@@ -327,6 +330,41 @@ public class CvpsApiController {
     public ResponseEntity<CvpsRequest> verifyGateEntryPass(@PathVariable String vehicleNo) {
         CvpsRequest approvedPass = service.validateGatePass(vehicleNo);
         return ResponseEntity.ok(approvedPass);
+    }
+
+    // =========================================================================
+    // MODIFICATION AND EDITING ENGINE ROUTE HANDLERS
+    // =========================================================================
+
+    /**
+     * Updates text field metadata details for an active request form.
+     * Enforces the modification validation check constraint before mutating database variables.
+     * Example: PUT /api/v1/permissions/100001/modify
+     */
+    @PutMapping("/{requestNo}/modify")
+    public ResponseEntity<CvpsRequest> modifyVehicleRequestDetails(
+            @PathVariable Long requestNo,
+            @Valid @RequestBody CvpsRequest modifiedPayload) {
+        
+        CvpsRequest updatedRecord = service.updateVehicleRequestDetails(requestNo, modifiedPayload);
+        return ResponseEntity.ok(updatedRecord);
+    }
+
+    /**
+     * Replaces or overwrites an individual uploaded vehicle document type file asset.
+     * Example: POST /api/v1/permissions/100001/replace-document
+     */
+    @PostMapping(value = "/{requestNo}/replace-document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> replaceSingleVehicleDocument(
+            @PathVariable Long requestNo,
+            @RequestParam("documentType") String documentType,
+            @RequestParam("documentNo") String documentNo,
+            @RequestParam("validFrom") String validFrom,
+            @RequestParam(value = "validTill", required = false) String validTill,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        
+        documentService.replaceVehicleDocument(requestNo, documentType, documentNo, validFrom, validTill, file);
+        return ResponseEntity.ok("Vehicle document type " + documentType + " successfully updated and replaced in storage.");
     }
 }
 
