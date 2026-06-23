@@ -2,8 +2,6 @@
 
 
 
-
-
 package com.heg.cvps.service;
 
 import java.io.File;
@@ -20,10 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.heg.cvps.entity.CvpsEmployeeDocument;
 import com.heg.cvps.entity.CvpsRequest;
-import com.heg.cvps.entity.CvpsVehicleDocument;
+import com.heg.cvps.entity.CvpsVehicleDocument; // 🆕 Added Import
+import com.heg.cvps.repository.CvpsEmployeeDocumentRepository;
 import com.heg.cvps.repository.CvpsRequestRepository;
-import com.heg.cvps.repository.CvpsVehicleDocumentRepository;
+import com.heg.cvps.repository.CvpsVehicleDocumentRepository; // 🆕 Added Import
 
 @Service
 public class CvpsDocumentService {
@@ -33,10 +33,15 @@ public class CvpsDocumentService {
 
     private final CvpsVehicleDocumentRepository docRepository;
     private final CvpsRequestRepository requestRepository;
+    private final CvpsEmployeeDocumentRepository empDocRepository; // 🆕 Injected Repository
 
-    public CvpsDocumentService(CvpsVehicleDocumentRepository docRepository, CvpsRequestRepository requestRepository) {
+    // Updated constructor to cleanly inject the new employee document repository dependency
+    public CvpsDocumentService(CvpsVehicleDocumentRepository docRepository, 
+                               CvpsRequestRepository requestRepository,
+                               CvpsEmployeeDocumentRepository empDocRepository) {
         this.docRepository = docRepository;
         this.requestRepository = requestRepository;
+        this.empDocRepository = empDocRepository;
     }
 
     public CvpsVehicleDocument uploadVehicleDocument(Long requestNo, String docType, String docNo, 
@@ -45,7 +50,42 @@ public class CvpsDocumentService {
         CvpsRequest cvpsRequest = requestRepository.findById(requestNo)
                 .orElseThrow(() -> new IllegalArgumentException("Request ID " + requestNo + " not found."));
 
-        // Create upload directory path if it doesn't exist
+        File directory = new File(uploadDir);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+
+        String uniqueFileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+        Path filePath = Paths.get(uploadDir + uniqueFileName);
+        
+        Files.copy(file.getInputStream(), filePath);
+
+        CvpsVehicleDocument vehicleDoc = new CvpsVehicleDocument();
+        vehicleDoc.setRequest(cvpsRequest);
+        vehicleDoc.setDocumentType(docType);
+        vehicleDoc.setDocumentNo(docNo);
+        vehicleDoc.setValidFrom(LocalDate.parse(validFrom));
+        if (validTill != null && !validTill.isEmpty()) {
+            vehicleDoc.setValidTill(LocalDate.parse(validTill));
+        }
+        vehicleDoc.setFilename(filePath.toString());
+
+        return docRepository.save(vehicleDoc);
+    }
+
+    public CvpsVehicleDocument getDocumentMetadata(Long documentId) {
+        return docRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document ID record not found."));
+    }
+
+    // =========================================================================
+    // 🆕 NEW METHOD: PROCESSING ENGINE FOR DRIVER/PERSONNEL FILE STORAGE
+    // =========================================================================
+    /**
+     * Stores driver/crew multi-part documents locally and persists metadata to Oracle.
+     */
+    public CvpsEmployeeDocument uploadEmployeeDocument(Long empId, String docType, String docNo, 
+                                                       String validFrom, String validTill, MultipartFile file) throws IOException {
         File directory = new File(uploadDir);
         if (!directory.exists()) {
             directory.mkdirs();
@@ -59,44 +99,35 @@ public class CvpsDocumentService {
         Files.copy(file.getInputStream(), filePath);
 
         // Map data details to Oracle persistence model
-        CvpsVehicleDocument vehicleDoc = new CvpsVehicleDocument();
-        vehicleDoc.setRequest(cvpsRequest);
-        vehicleDoc.setDocumentType(docType);
-        vehicleDoc.setDocumentNo(docNo);
-        vehicleDoc.setValidFrom(LocalDate.parse(validFrom));
-        if (validTill != null && !validTill.isEmpty()) {
-            vehicleDoc.setValidTill(LocalDate.parse(validTill));
+        CvpsEmployeeDocument employeeDoc = new CvpsEmployeeDocument();
+        employeeDoc.setEmpId(empId);
+        employeeDoc.setDocumentType(docType);
+        employeeDoc.setDocumentNo(docNo);
+        
+        if (validFrom != null && !validFrom.isEmpty()) {
+            employeeDoc.setValidFrom(LocalDate.parse(validFrom));
         }
-        vehicleDoc.setFilename(filePath.toString()); // Stores complete absolute path
+        if (validTill != null && !validTill.isEmpty()) {
+            employeeDoc.setValidTill(LocalDate.parse(validTill));
+        }
+        employeeDoc.setFilename(filePath.toString());
 
-        return docRepository.save(vehicleDoc);
-    }
-
-    public CvpsVehicleDocument getDocumentMetadata(Long documentId) {
-        return docRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Document ID record not found."));
+        return empDocRepository.save(employeeDoc);
     }
 
     // =========================================================================
-    // 🆕 DOCUMENT MODIFICATION & OVERWRITE LOGIC
+    // DOCUMENT MODIFICATION & OVERWRITE LOGIC
     // =========================================================================
-    
-    /**
-     * Overwrites/replaces an existing vehicle document file if it already exists for this request.
-     * Deletes the old physical PDF from the storage partition before writing the new one.
-     */
     @Transactional
     public void replaceVehicleDocument(Long requestNo, String documentType, String documentNo, 
                                        String validFrom, String validTill, MultipartFile file) throws IOException {
         
-        // 1. Check if a document of this type already exists under this request
         Optional<CvpsVehicleDocument> existingDocOpt = 
                 docRepository.findByRequest_RequestNoAndDocumentType(requestNo, documentType);
 
         if (existingDocOpt.isPresent()) {
             CvpsVehicleDocument oldDoc = existingDocOpt.get();
             
-            // 2. Safely delete the old physical file from disk to prevent storage leakage
             try {
                 Path oldFilePath = Paths.get(oldDoc.getFilename());
                 Files.deleteIfExists(oldFilePath);
@@ -104,18 +135,15 @@ public class CvpsDocumentService {
                 System.err.println("Warning: Could not delete physical file from disk: " + oldDoc.getFilename());
             }
 
-            // 3. Create upload directory if missing
             File directory = new File(uploadDir);
             if (!directory.exists()) {
                 directory.mkdirs();
             }
 
-            // 4. Stream the new physical file asset to disk
             String uniqueFileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
             Path targetPath = Paths.get(uploadDir + uniqueFileName);
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-            // 5. Update the existing entity row with new document metadata details
             oldDoc.setDocumentNo(documentNo);
             oldDoc.setValidFrom(LocalDate.parse(validFrom));
             if (validTill != null && !validTill.isEmpty()) {
@@ -127,7 +155,6 @@ public class CvpsDocumentService {
 
             docRepository.save(oldDoc);
         } else {
-            // 6. Fallback: If document type wasn't uploaded before, handle it as a standard new upload
             uploadVehicleDocument(requestNo, documentType, documentNo, validFrom, validTill, file);
         }
     }

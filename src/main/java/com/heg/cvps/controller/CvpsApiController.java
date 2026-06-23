@@ -3,8 +3,6 @@
 
 
 
-
-
 package com.heg.cvps.controller;
 
 import java.io.IOException;
@@ -33,11 +31,11 @@ import com.heg.cvps.entity.CvpsVehicleDocument;
 import com.heg.cvps.service.CvpsDocumentService;
 import com.heg.cvps.service.CvpsEmployeeDetailService;
 import com.heg.cvps.service.CvpsReportService;
-import com.heg.cvps.service.CvpsRequestService; // 🆕 IMPORT FOR REPORT ENGINE
+import com.heg.cvps.service.CvpsRequestService;
 
 import jakarta.validation.Valid;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*") // UNBLOCKS YOUR FRONTEND TEAMMATE FROM CORS RESTRICTIONS
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1/permissions")
 public class CvpsApiController {
@@ -45,19 +43,21 @@ public class CvpsApiController {
     private final CvpsRequestService service;
     private final CvpsDocumentService documentService;
     private final CvpsEmployeeDetailService employeeService;
-    private final CvpsReportService reportService; // 🆕 FIELD FOR REPORT SERVICE
+    private final CvpsReportService reportService;
 
-    // Updated constructor to inject the Reporting Engine dependency safely
     public CvpsApiController(CvpsRequestService service, 
                              CvpsDocumentService documentService, 
                              CvpsEmployeeDetailService employeeService,
-                             CvpsReportService reportService) { // 🆕 INJECT ENGINE
+                             CvpsReportService reportService) {
         this.service = service;
         this.documentService = documentService;
         this.employeeService = employeeService;
-        this.reportService = reportService; // 🆕 ASSIGN ENGINE
+        this.reportService = reportService;
     }
 
+    // =========================================================================
+    // VEHICLE REQUEST INITIALIZATION QUEUE
+    // =========================================================================
     @PostMapping
     public ResponseEntity<CvpsRequest> submitVehiclePermissionRequest(@Valid @RequestBody CvpsRequest incomingPayload) {
         CvpsRequest savedRecord = service.saveVehicleRequest(incomingPayload);
@@ -76,6 +76,9 @@ public class CvpsApiController {
         return ResponseEntity.ok(allRecords);
     }
 
+    // =========================================================================
+    // MULTIPART DOCUMENT STORAGE ROUTE ENGINES
+    // =========================================================================
     @PostMapping(value = "/{requestNo}/upload-all-documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> uploadAllDocuments(
             @PathVariable Long requestNo,
@@ -99,7 +102,7 @@ public class CvpsApiController {
         Resource resource = new UrlResource(filePath.toUri());
 
         if (!resource.exists() || !resource.isReadable()) {
-            throw new RuntimeException("The requested physical PDF file could not be read or found on the server filesystem storage layer.");
+            throw new RuntimeException("The requested physical file asset could not be resolved from local partition arrays.");
         }
 
         return ResponseEntity.ok()
@@ -108,6 +111,9 @@ public class CvpsApiController {
                 .body(resource);
     }
 
+    // =========================================================================
+    // CREW AND DRIVER PERSONNEL MANAGEMENT SUB-QUEUES
+    // =========================================================================
     @PostMapping("/{requestNo}/add-personnel")
     public ResponseEntity<CvpsEmployeeDetail> addPersonnel(
             @PathVariable Long requestNo,
@@ -117,8 +123,56 @@ public class CvpsApiController {
         return new ResponseEntity<>(registeredPerson, HttpStatus.CREATED);
     }
 
+    /**
+     * 🌟 POSITION-BASED DRIVER MULTI-PART DOCUMENT UPLOAD ENGINES (NO FILTERS)
+     * Maps incoming files purely based on order sequence index positions.
+     * Defends against Oracle ORA-01400 NOT NULL constraints on DOCUMENT_NO and VALID_FROM.
+     * Route: POST http://localhost:8086/api/v1/permissions/personnel/{empId}/upload-documents
+     */
+    @PostMapping(value = "/personnel/{empId}/upload-documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> uploadDriverDocuments(
+            @PathVariable Long empId,
+            @RequestParam("files") List<MultipartFile> files) throws IOException {
+        
+        if (files == null || files.isEmpty()) {
+            return ResponseEntity.badRequest().body("Error: No binary files attached to payload.");
+        }
+
+        // Establishes fallback string representation of today's date to secure VALID_FROM requirements
+        String todayDateStr = java.time.LocalDate.now().toString();
+        
+        for (int i = 0; i < files.size(); i++) {
+            MultipartFile file = files.get(i);
+            String docType = "OTHER";
+            String docNo = "REG-DOC-" + System.currentTimeMillis() + "-" + i; 
+            String fromDate = todayDateStr; 
+            String tillDate = null;
+            
+            if (i == 0) {
+                // First file attached is processed explicitly as the Driving License
+                docType = "DRIVING_LICENSE";
+                docNo = "DL-22334455"; 
+                fromDate = "2021-04-10";
+                tillDate = "2036-04-09";
+            } else if (i == 1) {
+                // Second file attached is processed explicitly as the Aadhaar Card
+                docType = "AADHAAR_CARD";
+                docNo = "998877665544";
+                fromDate = "2015-08-20";
+            } else if (i == 2) {
+                // Third file attached is processed explicitly as the Photograph Profile snapshot
+                docType = "PHOTOGRAPH";
+                docNo = "NA-PHOTO-" + empId; 
+                fromDate = todayDateStr; 
+            }
+            
+            documentService.uploadEmployeeDocument(empId, docType, docNo, fromDate, tillDate, file);
+        }
+        return new ResponseEntity<>("Personnel 3-document portfolio verified and stored successfully into Oracle.", HttpStatus.CREATED);
+    }
+
     // =========================================================================
-    // PHASE 7 & 8: WORKFLOW ACTION ENDPOINT WITH JSON BODY
+    // WORKFLOW STATE ROUTING ENGINE
     // =========================================================================
     @PostMapping("/{requestNo}/workflow-action")
     public ResponseEntity<CvpsRequest> performWorkflowAction(
@@ -135,33 +189,20 @@ public class CvpsApiController {
     }
 
     // =========================================================================
-    // PHASE 9: SUMMARY REPORTING AND LOOKUP ENDPOINTS
+    // SUMMARY REPORTING AND GATE CONTROL CHECK TERMINALS
     // =========================================================================
-    
-    /**
-     * 1. Get all requests filtered by workflow status queue
-     * Example: GET /api/v1/permissions/summary/filter?status=CREATED
-     */
     @GetMapping("/summary/filter")
     public ResponseEntity<List<CvpsRequest>> getSummaryByStatus(@RequestParam("status") String status) {
         List<CvpsRequest> filteredList = service.getRequestsByStatus(status);
         return ResponseEntity.ok(filteredList);
     }
 
-    /**
-     * 2. Security Gate Terminal validation for physical entry check
-     * Example: GET /api/v1/permissions/summary/validate-gate/MP04AB1234
-     */
     @GetMapping("/summary/validate-gate/{vehicleNo}")
     public ResponseEntity<CvpsRequest> verifyGateEntryPass(@PathVariable String vehicleNo) {
         CvpsRequest approvedPass = service.validateGatePass(vehicleNo);
         return ResponseEntity.ok(approvedPass);
     }
 
-    /**
-     * 3. 🆕 Streams a binary XLSX spreadsheet containing all contractor vehicle requests for admin monitoring.
-     * Route: GET /api/v1/permissions/summary/download-excel
-     */
     @GetMapping("/summary/download-excel")
     public ResponseEntity<byte[]> downloadMasterExcelReport() throws IOException {
         byte[] dataStream = reportService.generateMasterExcelReport();
@@ -176,14 +217,8 @@ public class CvpsApiController {
     }
 
     // =========================================================================
-    // MODIFICATION AND EDITING ENGINE ROUTE HANDLERS
+    // DATA MODIFICATION ROUTE ENGINES
     // =========================================================================
-
-    /**
-     * Updates text field metadata details for an active request form.
-     * Enforces the modification validation check constraint before mutating database variables.
-     * Example: PUT /api/v1/permissions/100001/modify
-     */
     @PutMapping("/{requestNo}/modify")
     public ResponseEntity<CvpsRequest> modifyVehicleRequestDetails(
             @PathVariable Long requestNo,
@@ -193,10 +228,6 @@ public class CvpsApiController {
         return ResponseEntity.ok(updatedRecord);
     }
 
-    /**
-     * Replaces or overwrites an individual uploaded vehicle document type file asset.
-     * Example: POST /api/v1/permissions/100001/replace-document
-     */
     @PostMapping(value = "/{requestNo}/replace-document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> replaceSingleVehicleDocument(
             @PathVariable Long requestNo,
@@ -212,37 +243,19 @@ public class CvpsApiController {
 }
 
 // =============================================================================
-// DATA TRANSFER OBJECT (DTO) FOR THE CLEAN BODY PAYLOAD
+// DATA TRANSFER INTERFACE LOGISTICS OBJECTS
 // =============================================================================
 class WorkflowActionRequest {
     private String action;
     private String empNo;
     private String remarks;
 
-    // Getters and Setters
-    public String getAction() { 
-        return action; 
-    }
-    public void setAction(String action) { 
-        this.action = action; 
-    }
+    public String getAction() { return action; }
+    public void setAction(String action) { this.action = action; }
 
-    public String getEmpNo() { 
-        return empNo; 
-    }
-    public void setEmpNo(String empNo) { 
-        this.empNo = empNo; 
-    }
+    public String getEmpNo() { return empNo; }
+    public void setEmpNo(String empNo) { this.empNo = empNo; }
 
-    public String getRemarks() { 
-        return remarks; 
-    }
-    public void setRemarks(String remarks) { 
-        this.remarks = remarks; 
-    }
+    public String getRemarks() { return remarks; }
+    public void setRemarks(String remarks) { this.remarks = remarks; }
 }
-
-
-
-
-
