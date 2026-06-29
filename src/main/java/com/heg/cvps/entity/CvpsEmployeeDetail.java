@@ -1,7 +1,6 @@
 
 
 
-
 package com.heg.cvps.entity;
 
 import java.io.Serializable;
@@ -52,6 +51,13 @@ public class CvpsEmployeeDetail implements Serializable {
     @Column(name = "NAME")
     private String name;
 
+    // 🟢 ADDED: Correct relational mappings for the updated database columns
+    @Column(name = "MOBILE_NO", length = 20)
+    private String mobileNo;
+
+    @Column(name = "DRIVER_PHOTO_NAME", length = 255)
+    private String driverPhotoName;
+
     public CvpsEmployeeDetail() {}
 
     public Long getId() { return id; }
@@ -74,4 +80,19 @@ public class CvpsEmployeeDetail implements Serializable {
     
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    // ── Getters and Setters for the new schema parameters ──
+    public String getMobileNo() { 
+        return mobileNo; 
+    }
+    public void setMobileNo(String mobileNo) { 
+        this.mobileNo = mobileNo; 
+    }
+    
+    public String getDriverPhotoName() { 
+        return driverPhotoName; 
+    }
+    public void setDriverPhotoName(String driverPhotoName) { 
+        this.driverPhotoName = driverPhotoName; 
+    }
 }

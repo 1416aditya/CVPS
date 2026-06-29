@@ -3,7 +3,7 @@
 package com.heg.cvps.entity;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.util.Date;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
@@ -20,7 +20,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-
 @Entity
 @Table(name = "CVPS_REQUESTS_HISTORY", uniqueConstraints = {
     @UniqueConstraint(name = "UK_CVPS_HISTORY", columnNames = {"REQUEST_ID", "ACTION_TAKEN", "ACTION_DATE"})
@@ -49,12 +48,12 @@ public class CvpsRequestHistory implements Serializable {
     @Column(name = "ACTION_TAKEN", nullable = false)
     private String actionTaken;
 
-    @Size(max = 100)
+    @Size(max = 200)
     @Column(name = "REMARKS")
     private String remarks;
 
     @Column(name = "ACTION_DATE", insertable = false, updatable = false)
-    private LocalDateTime actionDate;
+    private Date actionDate;
 
     public CvpsRequestHistory() {}
 
@@ -73,6 +72,6 @@ public class CvpsRequestHistory implements Serializable {
     public String getRemarks() { return remarks; }
     public void setRemarks(String remarks) { this.remarks = remarks; }
     
-    public LocalDateTime getActionDate() { return actionDate; }
-    public void setActionDate(LocalDateTime actionDate) { this.actionDate = actionDate; }
+    public Date getActionDate() { return actionDate; }
+    public void setActionDate(Date actionDate) { this.actionDate = new Date();}
 }
