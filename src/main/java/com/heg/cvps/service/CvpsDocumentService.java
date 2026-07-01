@@ -92,8 +92,13 @@ public class CvpsDocumentService {
         }
 
         // Generate a completely unique file name using systems timestamp
-        String uniqueFileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-        Path filePath = Paths.get(uploadDir + uniqueFileName);
+
+        String extension = "";
+        int index = file.getOriginalFilename().lastIndexOf(".");
+        extension=file.getOriginalFilename().substring(index);
+       
+        String uniqueFileName = System.currentTimeMillis()  + extension;
+        Path filePath = Paths.get( uniqueFileName);
         
         // Write file out to disk partition
         Files.copy(file.getInputStream(), filePath);
