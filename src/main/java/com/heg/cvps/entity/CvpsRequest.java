@@ -85,12 +85,12 @@ public class CvpsRequest implements Serializable {
     private List<CvpsVehicleDocument> vehicleDocuments;
 
     // 🔄 2. Relationship to Workflow Audit History Trail (Phase 8)
-    @OneToMany(mappedBy = "request", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "request", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JsonManagedReference
     private List<CvpsRequestHistory> requestHistories;
 
     // 🔄 3. Relationship to Drivers and Associated Personnel (Phase 5)
-    @OneToMany(mappedBy = "request", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "request", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JsonManagedReference
     private List<CvpsEmployeeDetail> employeeDetails;
 
